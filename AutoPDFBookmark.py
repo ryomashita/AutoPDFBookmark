@@ -78,6 +78,9 @@ def load_css_file(css_file):
     sheet = cssutils.parseString(css_string)
     css_list = {}
     for rule in sheet:
+        if hasattr(rule, "selectorText") is False:
+            # e.g., CSSComment doesn't have selectorText
+            continue
         selector = rule.selectorText
         # styles = rule.style.cssText
         inner_dict = {}
@@ -137,8 +140,6 @@ if __name__ == "__main__":
             print("output file name: %s" % (pdf_output_name))
 
     css_list = load_css_file(css_input_name)
-    # pprint(css_list)
-
     # pprint(css_list)
 
     doc = fitz.open(pdf_input_name)
