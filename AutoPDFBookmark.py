@@ -75,19 +75,13 @@ def usage():
 def load_css_file(css_file):
     with open(css_file, "rb") as fd:
         css_string = fd.read()
+
     sheet = cssutils.parseString(css_string)
-    css_list = {}
-    for rule in sheet:
-        if hasattr(rule, "selectorText") is False:
-            # e.g., CSSComment doesn't have selectorText
-            continue
-        selector = rule.selectorText
-        # styles = rule.style.cssText
-        inner_dict = {}
-        for property in rule.style:
-            # pprint(property)
-            inner_dict[property.name] = property.value
-        css_list[selector] = inner_dict
+    css_list = {
+        rule.selectorText: {property.name: property.value for property in rule.style}
+        for rule in sheet
+        if hasattr(rule, "selectorText")
+    }
     return css_list
 
 
