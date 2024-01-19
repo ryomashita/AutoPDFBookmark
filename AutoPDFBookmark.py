@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import re
+import os
 import sys
 import getopt
 import fitz  # pymupdf
@@ -89,7 +90,8 @@ if __name__ == "__main__":
         if name in ("-f", "--pdf"):
             pdf_input_name = value
             if pdf_output_name is None:
-                pdf_output_name = pdf_input_name.rsplit(".", 1)[0] + "_new" + ".pdf"
+                pdf_input_basename = os.path.splitext(pdf_input_name)[0]
+                pdf_output_name = pdf_input_basename + "_new" + ".pdf"
         if name in ("-c", "--css"):
             css_input_name = value
         if name in ("-o", "--output"):
@@ -118,8 +120,7 @@ if __name__ == "__main__":
     doc = fitz.open(pdf_input_name)
     toc = doc.get_toc(simple=False)
     if toc:
-        print("the file has toc.")
-        sys._exit(1)
+        assert "the file has toc."
 
     # the bmk_level should start from 1, if not, assert error
     has_main_title = False
@@ -131,51 +132,59 @@ if __name__ == "__main__":
         for one_block in blocks:
             context = one_block["lines"][0]["spans"][0]
             # print (context)
-            if context["flags"] == 0:
-                for key, values in css_list.items():
-                    pattern = re.compile(re_head_title)
-                    match_obj = pattern.match(key)
-                    if match_obj:  # get selector named h*
-                        bmk_level = int(match_obj.group(1))
-                        if (
-                            "font-size" in values and "font-family" in values
-                        ):  # only match font-size and font-family
-                            # pprint(values)
-                            pattern = re.compile(re_font_size)
-                            match_obj = pattern.match(
-                                values["font-size"]
-                            )  # only support pt for font-size
-                            if (
-                                match_obj
-                                and abs(int(match_obj.group(1)) - context["size"])
-                                <= fontsize_threshold
-                            ):
-                                # chapter text filter
-                                # pt1 = re.compile(re_chapter_code)
-                                # mo = pt1.match(context["text"])
-                                # if mo is None:
-                                # continue
-                                print(f'match: {context["text"]} [level:{bmk_level}]')
-                                line_local = context["bbox"][1]
-                                point = fitz.Point(0, float(line_local))
-                                if not has_main_title and bmk_level != 1:
-                                    assert "document starts from level %d" % (bmk_level)
-                                elif not has_main_title:
-                                    has_main_title = True
+            if not context["flags"] == 0:
+                continue
 
-                                # add bookmark
-                                toc.append(
-                                    [
-                                        bmk_level,
-                                        context["text"],
-                                        page_num,
-                                        {
-                                            "kind": fitz.LINK_GOTO,
-                                            "to": point,
-                                            "collapse": 1,
-                                        },
-                                    ]
-                                )
+            for key, values in css_list.items():
+                pattern = re.compile(re_head_title)
+                match_obj = pattern.match(key)
+                if match_obj:  # get selector named h*
+                    bmk_level = int(match_obj.group(1))
+                else:
+                    continue
+
+                if (
+                    "font-size" in values and "font-family" in values
+                ):  # only match font-size and font-family
+                    # pprint(values)
+                    pattern = re.compile(re_font_size)
+                    match_obj = pattern.match(values["font-size"])
+                    # only support pt for font-size
+                    # not check the font-family
+                else:
+                    continue
+
+                if (
+                    match_obj
+                    and abs(int(match_obj.group(1)) - context["size"])
+                    <= fontsize_threshold
+                ):
+                    # chapter text filter
+                    # pt1 = re.compile(re_chapter_code)
+                    # mo = pt1.match(context["text"])
+                    # if mo is None:
+                    # continue
+                    print(f'match: {context["text"]} [level:{bmk_level}]')
+                    line_local = context["bbox"][1]
+                    point = fitz.Point(0, float(line_local))
+                    if not has_main_title and bmk_level != 1:
+                        assert "document starts from level %d" % (bmk_level)
+                    elif not has_main_title:
+                        has_main_title = True
+
+                    # add bookmark
+                    toc.append(
+                        [
+                            bmk_level,
+                            context["text"],
+                            page_num,
+                            {
+                                "kind": fitz.LINK_GOTO,
+                                "to": point,
+                                "collapse": 1,
+                            },
+                        ]
+                    )
 
     # pprint(toc)
     doc.set_toc(toc)
