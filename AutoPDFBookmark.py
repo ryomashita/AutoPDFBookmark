@@ -55,7 +55,7 @@ pdf_input_name = "mypdf.pdf"  # default input pdf name
 css_input_name = "markdownhere.css"  # default input css name
 pdf_output_name = None  # default output pdf name
 
-# the acceptable margin between CSS font-size (`int(match_obj.group(1)`) and
+# the acceptable margin between CSS font-size (`selector_font_size`) and
 # actual font size (`context["size"]`)
 fontsize_threshold = 0.2
 
@@ -70,6 +70,44 @@ def usage():
     print("-f, --pdf : specify the input .pdf file name, mypdf.pdf as default")
     print("-c, --css : specify the input .css file name, markdownhere.css as default")
     print("-o, --output : specify the output .pdf file name, mypdf_new.pdf as default")
+
+
+def load_css_file(css_file):
+    with open(css_file, "rb") as fd:
+        css_string = fd.read()
+    sheet = cssutils.parseString(css_string)
+    css_list = {}
+    for rule in sheet:
+        selector = rule.selectorText
+        # styles = rule.style.cssText
+        inner_dict = {}
+        for property in rule.style:
+            # pprint(property)
+            inner_dict[property.name] = property.value
+        css_list[selector] = inner_dict
+    return css_list
+
+
+def get_header_level_from_selector(key, values):
+    # get selector named h* and return header level
+    # if not h*, return None
+    pattern = re.compile(re_head_title)
+    match_obj = pattern.match(key)
+    if match_obj:
+        bmk_level = int(match_obj.group(1))
+    else:
+        bmk_level = None
+
+    return bmk_level
+
+
+def get_font_size_from_selector(key, values):
+    if "font-size" not in values:
+        return None
+
+    pattern = re.compile(re_font_size)
+    match_obj = pattern.match(values["font-size"])
+    return int(match_obj.group(1))
 
 
 if __name__ == "__main__":
@@ -98,22 +136,8 @@ if __name__ == "__main__":
             pdf_output_name = value
             print("output file name: %s" % (pdf_output_name))
 
-    def load_css_file(css_file):
-        with open(css_file, "rb") as fd:
-            css_string = fd.read()
-        sheet = cssutils.parseString(css_string)
-        css_list = {}
-        for rule in sheet:
-            selector = rule.selectorText
-            # styles = rule.style.cssText
-            inner_dict = {}
-            for property in rule.style:
-                # pprint(property)
-                inner_dict[property.name] = property.value
-            css_list[selector] = inner_dict
-        return css_list
-
     css_list = load_css_file(css_input_name)
+    # pprint(css_list)
 
     # pprint(css_list)
 
@@ -136,29 +160,16 @@ if __name__ == "__main__":
                 continue
 
             for key, values in css_list.items():
-                pattern = re.compile(re_head_title)
-                match_obj = pattern.match(key)
-                if match_obj:  # get selector named h*
-                    bmk_level = int(match_obj.group(1))
-                else:
+                bmk_level = get_header_level_from_selector(key, values)
+                if not bmk_level:
                     continue
 
-                if (
-                    "font-size" in values and "font-family" in values
-                ):  # only match font-size and font-family
-                    # pprint(values)
-                    pattern = re.compile(re_font_size)
-                    match_obj = pattern.match(values["font-size"])
-                    # only support pt for font-size
-                    # not check the font-family
-                else:
+                # get font-size & font-family
+                selector_font_size = get_font_size_from_selector(key, values)
+                if not selector_font_size:
                     continue
 
-                if (
-                    match_obj
-                    and abs(int(match_obj.group(1)) - context["size"])
-                    <= fontsize_threshold
-                ):
+                if abs(selector_font_size - context["size"]) <= fontsize_threshold:
                     # chapter text filter
                     # pt1 = re.compile(re_chapter_code)
                     # mo = pt1.match(context["text"])
