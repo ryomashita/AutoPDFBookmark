@@ -6,9 +6,10 @@ import os
 import sys
 import getopt
 import fitz  # pymupdf
-import cssutils
+import cssutils  # cssutils
+import markdown  # Python-Markdown
 
-from pprint import pprint
+from pprint import pprint  # NOQA
 
 """
 AutoPDFBookmark Project
@@ -54,6 +55,7 @@ re_chapter_code = r"(\d+\.\d+\.\d+)|(\d+\.\d+)|(\d+\.)"  # -> 1.2.3 or 1.2 or 1.
 pdf_input_name = "mypdf.pdf"  # default input pdf name
 css_input_name = "markdownhere.css"  # default input css name
 pdf_output_name = None  # default output pdf name
+md_input_name = None  # default input md name
 
 # the acceptable margin between CSS font-size (`selector_font_size`) and
 # actual font size (`context["size"]`)
@@ -70,6 +72,7 @@ def usage():
     print("-f, --pdf : specify the input .pdf file name, mypdf.pdf as default")
     print("-c, --css : specify the input .css file name, markdownhere.css as default")
     print("-o, --output : specify the output .pdf file name, mypdf_new.pdf as default")
+    print("-m, --md : specify the input .md file name, None as default")
 
 
 def load_css_file(css_file):
@@ -107,12 +110,51 @@ def get_font_size_from_selector(key, values):
     return int(match_obj.group(1))
 
 
+def mdfile_to_toc(md_input_name):
+    with open(md_input_name, "r", encoding="utf-8") as md_file:
+        md_text = md_file.read()
+
+    md = markdown.Markdown(extensions=["toc"])
+    _ = md.convert(md_text)  # ここでmd.toc_tokensが更新される
+    # toc = md.toc
+    # pprint.pprint(md.toc_tokens)
+
+    # TOC Object to {name: level} dict.
+    result_hash = {}
+
+    def get_toc_tokens(toc_tokens):
+        nonlocal result_hash
+        for token in toc_tokens:
+            if "level" in token and "name" in token:
+                result_hash[token["name"]] = token["level"]
+
+            if "children" in token:
+                get_toc_tokens(token["children"])
+
+    get_toc_tokens(md.toc_tokens)
+    return result_hash
+
+
+def gen_document_toc_item(lvl, title, page, position):
+    return [lvl, title, page, {"kind": fitz.LINK_GOTO, "to": position, "collapse": 1}]
+
+
+def convert_Kangxi_to_CJK(str):
+    # https://imabari.hateblo.jp/entry/2020/08/03/220407
+    tbl = str.maketrans(
+        "⺃⺅⺉⺋⺎⺏⺐⺒⺓⺔⺖⺘⺙⺛⺟⺠⺡⺢⺣⺦⺨⺫⺬⺭⺱⺲⺹⺾⻁⻂⻃⻄⻍⻏⻑⻒⻖⻘⻟⻤⻨⻩⻫⻭⻯⻲⼀⼁⼂⼃⼄⼅⼆⼇⼈⼉⼊⼋⼌⼍⼎⼏⼐⼑⼒⼓⼔⼕⼖⼗⼘⼙⼚⼛⼜⼝⼞⼟⼠⼡⼢⼣⼤⼥⼦⼧⼨⼩⼪⼫⼬⼭⼮⼯⼰⼱⼲⼳⼴⼵⼶⼷⼸⼹⼺⼻⼼⼽⼾⼿⽀⽁⽂⽃⽄⽅⽆⽇⽈⽉⽊⽋⽌⽍⽎⽏⽐⽑⽒⽓⽔⽕⽖⽗⽘⽙⽚⽛⽜⽝⽞⽟⽠⽡⽢⽣⽤⽥⽦⽧⽨⽩⽪⽫⽬⽭⽮⽯⽰⽱⽲⽳⽴⽵⽶⽷⽸⽹⽺⽻⽼⽽⽾⽿⾀⾁⾂⾃⾄⾅⾆⾇⾈⾉⾊⾋⾌⾍⾎⾏⾐⾑⾒⾓⾔⾕⾖⾗⾘⾙⾚⾛⾜⾝⾞⾟⾠⾡⾢⾣⾤⾥⾦⾧⾨⾩⾪⾫⾬⾭⾮⾯⾰⾱⾲⾳⾴⾵⾶⾷⾸⾹⾺⾻⾼⾽⾾⾿⿀⿁⿂⿃⿄⿅⿆⿇⿈⿉⿊⿋⿌⿍⿎⿏⿐⿑⿒⿓⿔⿕戶黑",
+        "乚亻刂㔾兀尣尢巳幺彑忄扌攵旡母民氵氺灬丬犭罒示礻罓罒耂艹虎衤覀西辶阝長镸阝青飠鬼麦黄斉歯竜亀一丨丶丿乙亅二亠人儿入八冂冖冫几凵刀力勹匕匚匸十卜卩厂厶又口囗土士夂夊夕大女子宀寸小尢尸屮山巛工己巾干幺广廴廾弋弓彐彡彳心戈戸手支攴文斗斤方无日曰月木欠止歹殳毋比毛氏气水火爪父爻爿片牙牛犬玄玉瓜瓦甘生用田疋疒癶白皮皿目矛矢石示禸禾穴立竹米糸缶网羊羽老而耒耳聿肉臣自至臼舌舛舟艮色艸虍虫血行衣襾見角言谷豆豕豸貝赤走足身車辛辰辵邑酉釆里金長門阜隶隹雨靑非面革韋韭音頁風飛食首香馬骨高髟鬥鬯鬲鬼魚鳥鹵鹿麥麻黃黍黒黹黽鼎鼓鼠鼻齊齒龍龜龠戸黒",
+    )
+
+    return str.translate(tbl)
+
+
 if __name__ == "__main__":
     print(fitz.__doc__)
 
     try:
         options, args = getopt.getopt(
-            sys.argv[1:], "hf:c:o:", ["help", "pdf=", "css=", "output="]
+            sys.argv[1:], "hf:c:o:m:", ["help", "pdf=", "css=", "output=", "md="]
         )
     except getopt.GetoptError:
         usage()
@@ -132,9 +174,16 @@ if __name__ == "__main__":
         if name in ("-o", "--output"):
             pdf_output_name = value
             print("output file name: %s" % (pdf_output_name))
+        if name in ("-m", "--md"):
+            md_input_name = value
 
     css_list = load_css_file(css_input_name)
     # pprint(css_list)
+    if md_input_name is not None:
+        heading_dict = mdfile_to_toc(md_input_name)
+        # pprint(heading_dict)
+    else:
+        heading_dict = None
 
     doc = fitz.open(pdf_input_name)
     toc = doc.get_toc(simple=False)
@@ -146,13 +195,63 @@ if __name__ == "__main__":
 
     # for pages in doc:
     for page_num, page in enumerate(doc, 1):
+        text_blocks = page.get_text("blocks", flags=11)
+
+        for text_block in text_blocks:
+            text = text_block[4]
+            text = convert_Kangxi_to_CJK(text)
+            text = text.strip()
+            text = text.replace("\n", " ")
+            point = fitz.Point(0, float(text_block[1]))
+            if text in heading_dict:
+                bmk_level = heading_dict[text]
+                print(f"match: {text} [level:{bmk_level}]")
+                # add bookmark
+                toc.append(
+                    gen_document_toc_item(
+                        bmk_level,
+                        text,
+                        page_num,
+                        point,
+                    )
+                )
+                continue
+
+        continue
+
         blocks = page.get_text("dict", flags=11)["blocks"]
 
         for one_block in blocks:
             context = one_block["lines"][0]["spans"][0]
-            # print (context)
-            if not context["flags"] == 0:
-                continue
+            block_text = context["text"]
+            block_text = convert_Kangxi_to_CJK(block_text)
+            line_local = context["bbox"][1]
+            point = fitz.Point(0, float(line_local))
+            # print(context["text"])
+            # print("-------------------")
+
+            # if not context["flags"] == 0:
+            # continue
+
+            if heading_dict is not None:
+                if block_text in heading_dict:
+                    bmk_level = heading_dict[block_text]
+                    print(f"match: {block_text} [level:{bmk_level}]")
+                    if not has_main_title and bmk_level != 1:
+                        assert "document starts from level %d" % (bmk_level)
+                    elif not has_main_title:
+                        has_main_title = True
+
+                    # add bookmark
+                    toc.append(
+                        gen_document_toc_item(
+                            bmk_level,
+                            block_text,
+                            page_num,
+                            point,
+                        )
+                    )
+                    continue
 
             for key, values in css_list.items():
                 bmk_level = get_header_level_from_selector(key, values)
@@ -170,9 +269,7 @@ if __name__ == "__main__":
                     # mo = pt1.match(context["text"])
                     # if mo is None:
                     # continue
-                    print(f'match: {context["text"]} [level:{bmk_level}]')
-                    line_local = context["bbox"][1]
-                    point = fitz.Point(0, float(line_local))
+                    print(f"match: {block_text} [level:{bmk_level}]")
                     if not has_main_title and bmk_level != 1:
                         assert "document starts from level %d" % (bmk_level)
                     elif not has_main_title:
@@ -180,16 +277,12 @@ if __name__ == "__main__":
 
                     # add bookmark
                     toc.append(
-                        [
+                        gen_document_toc_item(
                             bmk_level,
-                            context["text"],
+                            block_text,
                             page_num,
-                            {
-                                "kind": fitz.LINK_GOTO,
-                                "to": point,
-                                "collapse": 1,
-                            },
-                        ]
+                            point,
+                        )
                     )
 
     # pprint(toc)

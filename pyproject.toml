@@ -10,6 +10,7 @@ python = "^3.11"
 cssutils = "^2.9.0"
 frontend = "^0.0.3"
 pymupdf = "^1.23.15"
+markdown = "^3.5.2"
 
 
 [build-system]
