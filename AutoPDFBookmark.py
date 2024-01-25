@@ -54,8 +54,8 @@ re_chapter_code = r"(\d+\.\d+\.\d+)|(\d+\.\d+)|(\d+\.)"  # -> 1.2.3 or 1.2 or 1.
 
 pdf_input_name = "mypdf.pdf"  # default input pdf name
 css_input_name = "markdownhere.css"  # default input css name
-pdf_output_name = None  # default output pdf name
-md_input_name = None  # default input md name
+pdf_output_name = None  # default output pdf name (input name + _new)
+md_input_name = None  # default input md name (input name + .md)
 
 # the acceptable margin between CSS font-size (`selector_font_size`) and
 # actual font size (`context["size"]`)
@@ -169,6 +169,9 @@ if __name__ == "__main__":
             if pdf_output_name is None:
                 pdf_input_basename = os.path.splitext(pdf_input_name)[0]
                 pdf_output_name = pdf_input_basename + "_new" + ".pdf"
+
+            if md_input_name is None:
+                md_input_name = pdf_input_basename + ".md"
         if name in ("-c", "--css"):
             css_input_name = value
         if name in ("-o", "--output"):

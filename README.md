@@ -13,7 +13,7 @@ TODO: Provide the user with the option to filter using either Markdown and/or CS
 1. run `Markdown PDF: Export (pdf)` or `Markdown PDF: Export (settings.json)` in vscode, to generate the pdf file.
 2. run this script.
 ```bash
-poetry run python .\AutoPDFBookmark.py -f <input-pdf> [-c <input-css>] -m <input-md> [-o <output-pdf>]
+poetry run python .\AutoPDFBookmark.py -f <input-pdf> [-c <input-css>] [-m <input-md>] [-o <output-pdf>]
 ```
 
 ## how to use
