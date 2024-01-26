@@ -54,7 +54,8 @@ re_chapter_code = r"(\d+\.\d+\.\d+)|(\d+\.\d+)|(\d+\.)"  # -> 1.2.3 or 1.2 or 1.
 
 pdf_input_name = "mypdf.pdf"  # default input pdf name
 css_input_name = "markdownhere.css"  # default input css name
-pdf_output_name = None  # default output pdf name (input name + _new)
+pdf_output_name = None  # default output pdf name (input name + postfix + .pdf)
+pdf_output_postfix = ""  # default output pdf postfix
 md_input_name = None  # default input md name (input name + .md)
 
 # the acceptable margin between CSS font-size (`selector_font_size`) and
@@ -166,12 +167,6 @@ if __name__ == "__main__":
             sys.exit(0)
         if name in ("-f", "--pdf"):
             pdf_input_name = value
-            if pdf_output_name is None:
-                pdf_input_basename = os.path.splitext(pdf_input_name)[0]
-                pdf_output_name = pdf_input_basename + "_new" + ".pdf"
-
-            if md_input_name is None:
-                md_input_name = pdf_input_basename + ".md"
         if name in ("-c", "--css"):
             css_input_name = value
         if name in ("-o", "--output"):
@@ -179,6 +174,14 @@ if __name__ == "__main__":
             print("output file name: %s" % (pdf_output_name))
         if name in ("-m", "--md"):
             md_input_name = value
+
+    if pdf_output_name is None:
+        pdf_input_basename = os.path.splitext(pdf_input_name)[0]
+        pdf_output_name = pdf_input_basename + pdf_output_postfix + ".pdf"
+
+    if md_input_name is None:
+        pdf_input_basename = os.path.splitext(pdf_input_name)[0]
+        md_input_name = pdf_input_basename + ".md"
 
     css_list = load_css_file(css_input_name)
     # pprint(css_list)
@@ -191,7 +194,7 @@ if __name__ == "__main__":
     doc = fitz.open(pdf_input_name)
     toc = doc.get_toc(simple=False)
     if toc:
-        assert "the file has toc."
+        raise AssertionError("the file has toc already.")
 
     # the bmk_level should start from 1, if not, assert error
     has_main_title = False
@@ -241,7 +244,9 @@ if __name__ == "__main__":
                     bmk_level = heading_dict[block_text]
                     print(f"match: {block_text} [level:{bmk_level}]")
                     if not has_main_title and bmk_level != 1:
-                        assert "document starts from level %d" % (bmk_level)
+                        raise AssertionError(
+                            "document starts from level %d" % (bmk_level)
+                        )
                     elif not has_main_title:
                         has_main_title = True
 
@@ -290,5 +295,8 @@ if __name__ == "__main__":
 
     # pprint(toc)
     doc.set_toc(toc)
-    doc.save(pdf_output_name)
+    if pdf_input_name == pdf_output_name:
+        doc.saveIncr()
+    else:
+        doc.save(pdf_output_name)
     doc.close()
