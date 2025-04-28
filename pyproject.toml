@@ -1,18 +1,12 @@
-[tool.poetry]
+[project]
 name = "autopdfbookmark"
 version = "0.1.0"
-description = ""
-authors = ["ryomashita <86085692+ryomashita@users.noreply.github.com>"]
+description = "Add your description here"
 readme = "README.md"
-
-[tool.poetry.dependencies]
-python = "^3.11"
-cssutils = "^2.9.0"
-frontend = "^0.0.3"
-pymupdf = "^1.23.15"
-markdown = "^3.5.2"
-
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires-python = ">=3.13"
+dependencies = [
+    "cssutils>=2.11.1",
+    "frontend>=0.0.3",
+    "markdown>=3.8",
+    "pymupdf>=1.25.5",
+]
