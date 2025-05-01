@@ -52,8 +52,9 @@ re_font_size = r"(\d+)pt"  # -> 14pt
 re_head_title = r"h(\d+)"  # -> h1, h2, h3, h4, h5, h6
 re_chapter_code = r"(\d+\.\d+\.\d+)|(\d+\.\d+)|(\d+\.)"  # -> 1.2.3 or 1.2 or 1.
 
+base_dir = os.path.dirname(os.path.abspath(__file__))
 pdf_input_name = "mypdf.pdf"  # default input pdf name
-css_input_name = "markdownhere.css"  # default input css name
+css_input_name = os.path.join(base_dir, "markdownhere.css")  # default input css name
 pdf_output_name = None  # default output pdf name (input name + postfix + .pdf)
 pdf_output_postfix = ""  # default output pdf postfix
 md_input_name = None  # default input md name (input name + .md)
@@ -150,7 +151,9 @@ def convert_Kangxi_to_CJK(str):
     return str.translate(tbl)
 
 
-if __name__ == "__main__":
+def main():
+    global pdf_input_name, css_input_name, pdf_output_name, md_input_name
+    global pdf_output_postfix, fontsize_threshold
     print(fitz.__doc__)
 
     try:
@@ -300,3 +303,7 @@ if __name__ == "__main__":
     else:
         doc.save(pdf_output_name)
     doc.close()
+
+
+if __name__ == "__main__":
+    main()

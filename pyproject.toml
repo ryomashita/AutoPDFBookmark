@@ -10,3 +10,6 @@ dependencies = [
     "markdown>=3.8",
     "pymupdf>=1.25.5",
 ]
+
+[project.scripts]
+autopdfbookmark = "autopdfbookmark.main:main"
